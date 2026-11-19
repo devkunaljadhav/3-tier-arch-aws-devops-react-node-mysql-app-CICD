@@ -1,217 +1,83 @@
-# Learn It Right Way
-This project is a full-stack web application built using React js for the frontend, Express js for the backend, and MySQL as the database. The application is designed to demonstrate the implementation of a 3-tier architecture, where the presentation layer (React js), application logic layer (Express js), and data layer (MySQL) are separated into distinct tiers.
+# 3-Tier Web Application on AWS
 
+**A practical reference for deploying a React, Node.js/Express, and MySQL application on AWS with a segmented network architecture and CI/CD.**
 
-## User Interface Screenshots 
-#### Dashboard
-![Dashboard](./frontend/public/ss/dashboard.png)
+![AWS](https://img.shields.io/badge/AWS-cloud%20architecture-orange?logo=amazonaws)
+![Frontend](https://img.shields.io/badge/frontend-React-61DAFB?logo=react&logoColor=20232A)
+![Backend](https://img.shields.io/badge/backend-Node.js-339933?logo=nodedotjs&logoColor=white)
+![Database](https://img.shields.io/badge/database-MySQL-4479A1?logo=mysql&logoColor=white)
+![Project type](https://img.shields.io/badge/type-learning%20project-blue)
 
-#### Books
-![Dashboard](./frontend/public/ss/books.png)
+This repository collects architecture diagrams, EC2 bootstrap scripts, and deployment notes for a three-tier AWS application. It is intended as a learning and implementation reference.
 
-#### Authors
-![Dashboard](./frontend/public/ss/authors.png)
+> **Repository scope:** The application source code, database dump, and CodeBuild/CodeDeploy specification files are not included here. The notes describe a deployment workflow for an application repository that supplies those files; this repository alone is not a deployable application.
 
+## Architecture
 
-## Connecting to private EC2 instance via a bastion host
-1. To change the ssh key permission:
+The design separates public entry points from application and database resources:
 
-```bash
-chmod 400 your_key.pem
-```
+1. **Presentation tier** — an internet-facing Application Load Balancer routes HTTP/HTTPS traffic to NGINX web instances in private subnets. NGINX serves the frontend and proxies API requests.
+2. **Application tier** — an internal Application Load Balancer forwards API traffic to Node.js/Express instances in private subnets.
+3. **Data tier** — a private Amazon RDS for MySQL instance is reachable only from the application tier.
 
-2. To start ssh agent:
+The deployment notes also cover a VPC, public and private subnets across Availability Zones, security groups, Auto Scaling groups, S3 artifacts, Systems Manager Parameter Store, CloudWatch, and separate CI/CD pipelines for the web and application tiers. Route 53 and CloudFront are listed as optional edge services.
 
-```bash
-eval "$(ssh-agent -s)"  
-```
+![AWS three-tier architecture](./Architecture.png)
 
-3. To add key to ssh agent:
+## Application previews
 
-```bash
-ssh-add your_key.pem
-```
+<p align="center">
+  <img src="./1.png" alt="Application preview 1" width="31%">
+  <img src="./2.png" alt="Application preview 2" width="31%">
+  <img src="./3.png" alt="Application preview 3" width="31%">
+</p>
 
-4. To ssh into bastion host with agent forwarding:
+## Repository contents
 
-```bash
-ssh -A ec2-user@bastion_host_public_ip
-```
+| File | Description |
+| --- | --- |
+| [Architecture.png](./Architecture.png) | AWS architecture diagram |
+| [architecture1.png](./architecture1.png) | Additional architecture reference |
+| [AWS CICD Pipeline - AWS.txt](./AWS%20CICD%20Pipeline%20-%20AWS.txt) | Step-by-step AWS infrastructure and CI/CD notes |
+| [web-tier-user-data.txt](./web-tier-user-data.txt) | NGINX, CloudWatch Agent, and CodeDeploy bootstrap example |
+| [app-tier-user-data.txt](./app-tier-user-data.txt) | Node.js, PM2, CloudWatch Agent, and CodeDeploy bootstrap example |
+| [1.png](./1.png), [2.png](./2.png), [3.png](./3.png) | Application preview images |
 
-5. To connect private instance from the bastion host:
+## Deployment outline
 
-```bash
-ssh ec2-user@private_instance_private_ip 
-```
+The detailed walkthrough is in [AWS CICD Pipeline - AWS.txt](./AWS%20CICD%20Pipeline%20-%20AWS.txt). At a high level, the workflow is:
 
-## Setting up the Data Tier
-#### Install MySQL
-1. To download MySQL repository package:
+1. Create a VPC, subnets, route tables, and tier-specific security groups.
+2. Create the private database and store application settings securely.
+3. Configure EC2 launch templates, target groups, load balancers, and Auto Scaling groups.
+4. Configure the web and application instances using the supplied user-data examples.
+5. Set up separate CodeBuild, CodeDeploy, and CodePipeline workflows for each tier.
+6. Add DNS, HTTPS, and optional CloudFront distribution after validating the deployment.
 
-```bash
-wget https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
-```
+### Prerequisites
 
-2. To verify the package download:
+- An AWS account with permissions to create and configure the services above.
+- An AWS Region with at least two Availability Zones available.
+- The application source repository, including its build and deployment specifications.
+- A domain name and TLS certificate if you plan to configure public HTTPS.
+- Familiarity with VPC networking, IAM, EC2, RDS, and AWS deployment services.
 
-```bash
-ls -lrt 
-```
+### Before using the examples
 
-3. To install MySQL repository package:
+- Review every example and replace environment-specific values, including hostnames, domains, ports, Region-specific URLs, and resource names.
+- Keep database credentials in **AWS Systems Manager Parameter Store as `SecureString`** or AWS Secrets Manager. Never commit real secrets to source control.
+- Restrict security-group rules to the required source security groups and ports. Avoid broad SSH ingress; prefer AWS Systems Manager Session Manager where possible.
+- Use least-privilege IAM policies, enable database backups and encryption, and validate health-check paths and deployment settings for your application.
+- Treat the bootstrap scripts as starting points: test them in a non-production environment and adapt package commands and service configuration to your chosen Amazon Linux release.
 
-```bash
-sudo dnf install -y mysql80-community-release-el9-1.noarch.rpm 
-```
+## Learning goals
 
-4. To import GPG key: 
+- Understand separation of presentation, application, and data tiers.
+- Practice private-subnet deployment and controlled traffic flow between tiers.
+- Explore load balancing, health checks, and horizontal scaling with Auto Scaling.
+- Build an AWS CI/CD workflow and centralize logs with CloudWatch.
+- Apply safer configuration and secret-management practices.
 
-```bash
-sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 
-```
+## Contributions
 
-5. To update package index:
-
-```bash
-sudo dnf update –y 
-```
-
-6. To install MySQL server:
-
-```bash
-sudo dnf install -y mysql-community-server  
-```
-
-7. To start the mysql service:
-
-```bash
-sudo systemctl start mysqld
-```
-
-8. To enable mysql to start on boot:
-
-```bash
-sudo systemctl enable mysqld 
-```
-
-9. To secure the mysql installation:
-
-```bash
-sudo grep 'temporary password' /var/log/mysqld.log 
-
-sudo mysql_secure_installation 
-```
-
-10. To create database and restore data, please refer SQL scripts on [db.sql](./backend/db.sql) file.
-
-
-## Setting up the Application Tier
-#### Install GIT
-```bash
-sudo yum update -y
-
-sudo yum install git -y
-
-git — version
-```
-
-#### Clone repository
-```bash
-git clone https://github.com/learnItRightWay01/react-node-mysql-app.git
-```
-
-#### Install node.js
-1. To install node version manager (nvm)
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-```
-
-2. To load nvm
-```bash
-source ~/.bashrc
-```
-
-3. To use nvm to install the latest LTS version of Node.js
-```bash
-nvm install --lts
-```
-
-4. To test that Node.js is installed and running
-```bash
-node -e "console.log('Running Node.js ' + process.version)"
-```
-
-## Setting up the Presentation Tier
-#### Install GIT
-```
-PLEASE REFER ABOVE
-```
-
-#### Clone repository
-```
-PLEASE REFER ABOVE
-```
-
-#### Install node.js
-```
-PLEASE REFER ABOVE
-```
-
-#### Install NGINX
-```bash
-dnf search nginx
-
-sudo dnf install nginx
-
-sudo systemctl restart nginx 
-
-nginx -v
-```
-
-#### Copy react.js build files
-```bash
-sudo cp -r dist /usr/share/nginx/html 
-```
-
-#### Update NGINX config
-1. Server name and root
-```
-server_name    domain.com www.subdomain.com
-root           /usr/share/nginx/html/dist
-```
-
-2. Setup reverse proxy
-```
-location /api { 
-   proxy_pass http://application_tier_instance_private_ip:3200/api; 
-}
-```
-
-3. Restart NGINX
-```
-sudo systemctl restart nginx
-```
-
-## User data scripts
-#### Install NGINX
-For [AWS solutions - 06](https://youtu.be/snQlL0fJI3Q) and  [AWS solutions - 07](https://youtu.be/eRX1FI2cFi8)
-
-```bash
-#!/bin/bash 
-# Update package lists 
-yum update -y 
-
-# Install Nginx 
-yum install -y nginx 
-
-# Stop and disable default service (optional) 
-systemctl stop nginx 
-systemctl disable nginx 
-
-# Create a custom welcome message file 
-echo "Welcome to Presentation Tier EC2 instance in Availability Zone B." > /usr/share/nginx/html/index.html 
-
-# Start and enable the Nginx service 
-systemctl start nginx 
-systemctl enable nginx
-```
+Improvements to the documentation, diagrams, and deployment examples are welcome. Please keep examples free of account identifiers, credentials, and other environment-specific secrets.
