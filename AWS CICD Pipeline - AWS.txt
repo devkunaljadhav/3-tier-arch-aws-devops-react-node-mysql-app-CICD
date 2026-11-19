@@ -135,7 +135,7 @@ appsec.yml is typically used for application related, install, move, copy etc in
   Backups = NO [will create fastly]
   Encryption = yes
 
-Endpoint = dev-db-instance.cdbmlufgqkjd.ap-south-1.rds.amazonaws.com
+Endpoint = dev-db-instance.c9m8ywsmmn3q.ap-south-1.rds.amazonaws.com
 Username = admin
 Password = root123456
    
@@ -151,7 +151,7 @@ Password = root123456
 
     Connect to the RDS database and create databases
     --------------------------------------------------------
-    mysql -h dev-db-instance.cdbmlufgqkjd.ap-south-1.rds.amazonaws.com -u admin -p
+    mysql -h dev-db-instance.c9m8ywsmmn3q.ap-south-1.rds.amazonaws.com -u admin -p
     pwd: root123456
 	
 --> Go to Project folder --> backend --> open db file and run the database commands
